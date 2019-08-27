@@ -20,10 +20,11 @@ import com.arcsoft.face.FaceEngine;
 import com.arcsoft.face.FaceFeature;
 import com.arcsoft.face.FaceInfo;
 import com.arcsoft.face.FaceSimilar;
+import com.wsy.faceswap.codec.Mp4Recorder;
+import com.wsy.faceswap.codec.DecodeCallback;
+import com.wsy.faceswap.codec.ImageUtil;
+import com.wsy.faceswap.codec.Mp4Decoder;
 import com.wsy.faceswap.ffmpeg.RecordUtil;
-import com.wsy.faceswap.mp4extractor.DecodeCallback;
-import com.wsy.faceswap.mp4extractor.ImageUtil;
-import com.wsy.faceswap.mp4extractor.Mp4Decoder;
 
 import java.io.File;
 import java.io.IOException;
@@ -47,6 +48,7 @@ public class MainActivity extends AppCompatActivity implements DecodeCallback {
     private static String[] NEEDED_PERMISSIONS = new String[]{
             Manifest.permission.READ_PHONE_STATE,
             Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.CAMERA,
             Manifest.permission.WRITE_EXTERNAL_STORAGE
     };
 
@@ -91,7 +93,8 @@ public class MainActivity extends AppCompatActivity implements DecodeCallback {
     /**
      * 视频目标文件
      */
-    String targetMp4 = "sdcard/marked.mp4";
+    String ffmpegMp4 = "sdcard/marked.mp4";
+    String mediaCodecMp4 = "sdcard/mediaCodec.mp4";
 
     /**
      * 线程池
@@ -107,6 +110,10 @@ public class MainActivity extends AppCompatActivity implements DecodeCallback {
      */
     byte[] targetYv12;
     /**
+     * 输入给MediaCodec的NV12数据
+     */
+    byte[] targetNv12;
+    /**
      * 目标视频的宽高
      */
     private int videoWidth, videoHeight;
@@ -114,7 +121,8 @@ public class MainActivity extends AppCompatActivity implements DecodeCallback {
     /**
      * 使用ffmpeg将裸数据保存成MP4的工具类，由于是软解，没有MediaCodec效率高，不适合用于实时
      */
-    private RecordUtil ffmpegRecorder = new RecordUtil();
+    private RecordUtil ffmpegRecorder;
+    private Mp4Recorder mediaCodecRecorder;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -125,6 +133,12 @@ public class MainActivity extends AppCompatActivity implements DecodeCallback {
             ActivityCompat.requestPermissions(this, NEEDED_PERMISSIONS, ACTION_REQUEST_PERMISSIONS);
         } else {
             decodeVideo();
+
+//            try {
+//                new EncodeAndMuxTest().testEncodeVideoToMp4();
+//            } catch (Throwable throwable) {
+//                throwable.printStackTrace();
+//            }
         }
 
     }
@@ -189,10 +203,13 @@ public class MainActivity extends AppCompatActivity implements DecodeCallback {
     @Override
     public void onDecodeStart(int width, int height, int frameRate) {
         targetYv12 = new byte[width * height * 3 / 2];
+        targetNv12 = new byte[width * height * 3 / 2];
         videoWidth = width;
         videoHeight = height;
-        ffmpegRecorder.startRecord(targetMp4, videoWidth, videoHeight, frameRate);
-
+        ffmpegRecorder = new RecordUtil();
+        ffmpegRecorder.startRecord(ffmpegMp4, videoWidth, videoHeight, frameRate);
+        mediaCodecRecorder = new Mp4Recorder(width, height, frameRate, new File(mediaCodecMp4));
+        mediaCodecRecorder.startRecord();
     }
 
 
@@ -213,7 +230,7 @@ public class MainActivity extends AppCompatActivity implements DecodeCallback {
         int code = faceEngine.detectFaces(targetNv21, videoWidth, videoHeight, FaceEngine.CP_PAF_NV21, faceInfoList);
         if (code == ErrorInfo.MOK && faceInfoList.size() > 0) {
             if (firstFaceFeature == null) {
-                recordFirstFace(targetNv21, faceInfoList);
+                recordFirstFace(targetNv21, faceInfoList.get(0));
             }
             // 第一次找到的人脸在当前帧的人脸信息
             FaceInfo firstFaceInfo = null;
@@ -228,7 +245,7 @@ public class MainActivity extends AppCompatActivity implements DecodeCallback {
             if (firstFaceInfo == null) {
                 for (FaceInfo faceInfo : faceInfoList) {
                     // 当前人脸是否被处理过，处理过则跳过
-                    boolean isCurrentFaceProcessed = isCurrentFaceProcessed(faceInfo);
+                    boolean isCurrentFaceProcessed = isCurrentFaceProcessed(faceInfo,lastFrameExtractFaceIdList);
                     // 没处理过，则特征提取并比对
                     if (!isCurrentFaceProcessed) {
                         firstFaceInfo = getFaceInfo(targetNv21, faceInfo);
@@ -250,6 +267,8 @@ public class MainActivity extends AppCompatActivity implements DecodeCallback {
         // 处理完成，将NV21转成YV12，用于处理帧
         ImageUtil.nv21ToYv12(targetNv21, targetYv12);
         ffmpegRecorder.pushFrame(targetYv12, videoWidth, videoHeight);
+        ImageUtil.nv21ToNv12(targetNv21, targetNv12);
+        mediaCodecRecorder.pushFrame(targetNv12, time);
     }
 
     private byte[] imageToTargetNv21(Image image, int frameWidth, int frameHeight) {
@@ -318,9 +337,14 @@ public class MainActivity extends AppCompatActivity implements DecodeCallback {
         return firstFaceInfo;
     }
 
-    private boolean isCurrentFaceProcessed(FaceInfo faceInfo) {
+    /**
+     * 判断当前人脸是否已处理
+     * @param faceInfo
+     * @return
+     */
+    private boolean isCurrentFaceProcessed(FaceInfo faceInfo,List<Integer> faceIdList) {
         boolean isCurrentFaceProcessed = false;
-        for (Integer integer : lastFrameExtractFaceIdList) {
+        for (Integer integer : faceIdList) {
             if (integer == faceInfo.getFaceId()) {
                 isCurrentFaceProcessed = true;
                 break;
@@ -329,8 +353,12 @@ public class MainActivity extends AppCompatActivity implements DecodeCallback {
         return isCurrentFaceProcessed;
     }
 
+    /**
+     * 清除lastFrameExtractFaceIdList中多余的人脸ID
+     * @param faceInfoList
+     * @param lastFrameExtractFaceIdList
+     */
     private void clearLeaveFaces(List<FaceInfo> faceInfoList, List<Integer> lastFrameExtractFaceIdList) {
-        // 清除lastFrameExtractFaceIdList中多余的人脸ID
         for (FaceInfo faceInfo : faceInfoList) {
             for (int i = lastFrameExtractFaceIdList.size() - 1; i > 0; i--) {
                 if (lastFrameExtractFaceIdList.get(i) == faceInfo.getFaceId()) {
@@ -340,21 +368,28 @@ public class MainActivity extends AppCompatActivity implements DecodeCallback {
         }
     }
 
-    private void recordFirstFace(byte[] targetNv21, List<FaceInfo> faceInfoList) {
+    /**
+     * 记录第一个被识别的人脸，之后都用这个人脸
+     *
+     * @param nv21         图像数据
+     * @param faceInfo 人脸信息列表
+     */
+    private void recordFirstFace(byte[] nv21, FaceInfo faceInfo) {
         int code;
         // 特征还没存，存下人脸特征
         firstFaceFeature = new FaceFeature();
-        code = faceEngine.extractFaceFeature(targetNv21, videoWidth, videoHeight, FaceEngine.CP_PAF_NV21, faceInfoList.get(0), firstFaceFeature);
+        code = faceEngine.extractFaceFeature(nv21, videoWidth, videoHeight, FaceEngine.CP_PAF_NV21, faceInfo, firstFaceFeature);
         if (code != ErrorInfo.MOK) {
             firstFaceFeature = null;
         } else {
-            firstFaceId = faceInfoList.get(0).getFaceId();
+            firstFaceId = faceInfo.getFaceId();
         }
     }
 
     @Override
     public void onDecodeFinished() {
         ffmpegRecorder.stopRecord();
+        mediaCodecRecorder.stopRecord();
         Log.i(TAG, "onDecodeFinished: ");
     }
 

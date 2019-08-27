@@ -1,4 +1,4 @@
-package com.wsy.faceswap.mp4extractor;
+package com.wsy.faceswap.codec;
 
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
@@ -100,9 +100,8 @@ public class Mp4Recorder {
             //把要编码的数据添加进去
             inputBuffer.put(nv12);
             //塞到编码序列中, 等待MediaCodec编码
-            Log.i(TAG, "encodeVideo:  " + lastTime);
             if (time == -1) {
-                videoMediaCodec.queueInputBuffer(inputIndex, 0, nv12.length, lastTime += (1000*1000 / frameRate), 0);
+                videoMediaCodec.queueInputBuffer(inputIndex, 0, nv12.length, lastTime += (1000 * 1000 / frameRate), 0);
             } else {
                 videoMediaCodec.queueInputBuffer(inputIndex, 0, nv12.length, time, 0);
                 lastTime = time;
@@ -111,10 +110,8 @@ public class Mp4Recorder {
 
         MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
         //读取MediaCodec编码后的数据
-        int outputIndex = videoMediaCodec.dequeueOutputBuffer(bufferInfo, TIMEOUT_USEC);
-        byte[] frameData = null;
-        int destPos = 0;
-        while (outputIndex >= 0) {
+        int outputIndex;
+        while ((outputIndex = videoMediaCodec.dequeueOutputBuffer(bufferInfo, TIMEOUT_USEC)) >= 0) {
             ByteBuffer outputBuffer = null;
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                 outputBuffer = videoMediaCodec.getOutputBuffer(outputIndex);
@@ -135,27 +132,13 @@ public class Mp4Recorder {
                     break;
                 default://正常帧
                     videoOutputStream.write(h264, 0, h264.length);
-                    if (frameData == null) {
-                        frameData = new byte[bufferInfo.size];
-                    }
-                    System.arraycopy(h264, 0, frameData, destPos, h264.length);
                     break;
             }
             videoOutputStream.flush();
             //数据写入本地成功 通知MediaCodec释放data
             videoMediaCodec.releaseOutputBuffer(outputIndex, false);
 
-            //读取下一次编码数据
-            outputIndex = videoMediaCodec.dequeueOutputBuffer(bufferInfo, TIMEOUT_USEC);
 
-            if (frameData != null) {
-                if (outputIndex >= 0) {
-                    destPos = frameData.length;
-                    byte[] temp = new byte[frameData.length + bufferInfo.size];
-                    System.arraycopy(frameData, 0, temp, 0, frameData.length);
-                    frameData = temp;
-                }
-            }
         }
     }
 

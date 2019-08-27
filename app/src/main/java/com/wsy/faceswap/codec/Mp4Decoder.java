@@ -1,4 +1,4 @@
-package com.wsy.faceswap.mp4extractor;
+package com.wsy.faceswap.codec;
 
 import android.media.Image;
 import android.media.MediaCodec;

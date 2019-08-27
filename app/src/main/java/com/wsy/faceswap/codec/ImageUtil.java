@@ -1,4 +1,4 @@
-package com.wsy.faceswap.mp4extractor;
+package com.wsy.faceswap.codec;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
