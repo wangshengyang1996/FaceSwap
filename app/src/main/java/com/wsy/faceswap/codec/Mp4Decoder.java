@@ -110,15 +110,19 @@ public class Mp4Decoder {
         boolean outputFinished = false;
         while (!outputFinished) {
             if (!inputFinished) {
+                // 取待输入视频数据的buffer下标
                 int inputBufferId = decoder.dequeueInputBuffer(DEFAULT_TIMEOUT_US);
                 if (inputBufferId >= 0) {
+                    // 取buffer
                     ByteBuffer inputBuffer = null;
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                         inputBuffer = decoder.getInputBuffer(inputBufferId);
                     } else {
                         inputBuffer = decoder.getInputBuffers()[inputBufferId];
                     }
+                    // 通过MediaExtractor读入帧数据
                     int sampleSize = extractor.readSampleData(inputBuffer, 0);
+                    // 帧数据入输入队列
                     if (sampleSize < 0) {
                         decoder.queueInputBuffer(inputBufferId, 0, 0, 0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
                         inputFinished = true;
@@ -129,6 +133,7 @@ public class Mp4Decoder {
                     }
                 }
             }
+            // 取出解码后的数据
             int outputBufferId = decoder.dequeueOutputBuffer(info, DEFAULT_TIMEOUT_US);
             if (outputBufferId >= 0) {
                 if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
@@ -150,7 +155,7 @@ public class Mp4Decoder {
                             decodeCallback.onFrameAvailable(data, width, height, extractor.getSampleTime());
                         }
                     }
-
+                    // 释放buffer
                     decoder.releaseOutputBuffer(outputBufferId, false);
                 }
             }

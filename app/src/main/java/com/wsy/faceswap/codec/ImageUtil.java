@@ -297,6 +297,18 @@ public class ImageUtil {
         }
     }
 
+    /**
+     * 裁剪YUV420SP（NV21/NV12）
+     *
+     * @param yuv420sp     原始数据
+     * @param cropYuv420sp 裁剪后的数据，需要预先分配内存
+     * @param width        原始宽度
+     * @param height       原始高度
+     * @param left         原始数据被裁剪的左边界
+     * @param top          原始数据被裁剪的上边界
+     * @param right        原始数据被裁剪的右边界
+     * @param bottom       原始数据被裁剪的下边界
+     */
     public static void cropYuv420sp(byte[] yuv420sp, byte[] cropYuv420sp, int width, int height, int left, int top,
                                     int right, int bottom) {
         int halfWidth = width / 2;
