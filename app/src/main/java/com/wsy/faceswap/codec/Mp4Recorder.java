@@ -3,11 +3,9 @@ package com.wsy.faceswap.codec;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
-import android.util.Log;
+import android.media.MediaMuxer;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -22,10 +20,11 @@ public class Mp4Recorder {
 
     private int videoWidth;
     private int videoHeight;
-    private FileOutputStream videoOutputStream;
     private MediaCodec videoMediaCodec;
-    private byte[] configByte;
+    private MediaMuxer mediaMuxer;
+    private int videoTrack = -1;
     boolean recording = false;
+    long lastPresentationTime = 0;
 
     public boolean isRecording() {
         return recording;
@@ -39,8 +38,8 @@ public class Mp4Recorder {
             throw new RuntimeException("file can not be created");
         }
         try {
-            videoOutputStream = new FileOutputStream(file);
-        } catch (FileNotFoundException e) {
+            mediaMuxer = new MediaMuxer(file.getAbsolutePath(), MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+        } catch (IOException e) {
             throw new RuntimeException("file not exists");
         }
     }
@@ -83,7 +82,6 @@ public class Mp4Recorder {
         }
     }
 
-    long lastTime = 0;
 
     private void encodeVideo(byte[] nv12, long time) throws IOException {
         //得到编码器的输入和输出流, 输入流写入源数据 输出流读取编码后的数据
@@ -101,10 +99,10 @@ public class Mp4Recorder {
             inputBuffer.put(nv12);
             //塞到编码序列中, 等待MediaCodec编码
             if (time == -1) {
-                videoMediaCodec.queueInputBuffer(inputIndex, 0, nv12.length, lastTime += (1000 * 1000 / frameRate), 0);
+                videoMediaCodec.queueInputBuffer(inputIndex, 0, nv12.length, lastPresentationTime += (1000 * 1000 / frameRate), 0);
             } else {
                 videoMediaCodec.queueInputBuffer(inputIndex, 0, nv12.length, time, 0);
-                lastTime = time;
+                lastPresentationTime = time;
             }
         }
 
@@ -118,26 +116,21 @@ public class Mp4Recorder {
             } else {
                 outputBuffer = videoMediaCodec.getOutputBuffers()[outputIndex];
             }
-            byte[] h264 = new byte[bufferInfo.size];
-            //这步就是编码后的h264数据了
-            outputBuffer.get(h264);
-            switch (bufferInfo.flags) {
-                case MediaCodec.BUFFER_FLAG_CODEC_CONFIG://视频信息
-                    configByte = new byte[bufferInfo.size];
-                    configByte = h264;
-                    break;
-                case MediaCodec.BUFFER_FLAG_KEY_FRAME://关键帧
-                    videoOutputStream.write(configByte, 0, configByte.length);
-                    videoOutputStream.write(h264, 0, h264.length);
-                    break;
-                default://正常帧
-                    videoOutputStream.write(h264, 0, h264.length);
-                    break;
+            if (bufferInfo.flags == MediaCodec.BUFFER_FLAG_CODEC_CONFIG) {
+                bufferInfo.size = 0;
             }
-            videoOutputStream.flush();
+            if (bufferInfo.size != 0) {
+                if (videoTrack < 0) {
+                    videoTrack = mediaMuxer.addTrack(videoMediaCodec.getOutputFormat());
+                    mediaMuxer.start();
+                }
+                outputBuffer.position(bufferInfo.offset);
+                outputBuffer.limit(bufferInfo.offset + bufferInfo.size);
+                mediaMuxer.writeSampleData(videoTrack, outputBuffer, bufferInfo);
+            }
+
             //数据写入本地成功 通知MediaCodec释放data
             videoMediaCodec.releaseOutputBuffer(outputIndex, false);
-
 
         }
     }
@@ -145,6 +138,8 @@ public class Mp4Recorder {
     public void stopRecord() {
         recording = false;
         try {
+            mediaMuxer.stop();
+            mediaMuxer.release();
             videoMediaCodec.stop();
             videoMediaCodec.release();
         } catch (Exception e) {
