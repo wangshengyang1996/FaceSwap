@@ -45,46 +45,61 @@ public class Mp4Recorder {
     }
 
     public void startRecord() {
-        MediaFormat mediaFormat;
-        mediaFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, videoWidth, videoHeight);
+        // 根据格式和宽高创建MediaFormat
+        MediaFormat mediaFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, videoWidth, videoHeight);
+        // 设置颜色格式为YUV420SP，这里指的是NV12
         mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar);
+        // 比特率设置，越大，视频质量越高
         mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 3000000);
+        // 帧率
         mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, frameRate);
+        // 关键帧间隔，单位是秒
         mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
 
         try {
+            // 根据格式创建encoder
             videoMediaCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
         } catch (IOException e) {
             throw new RuntimeException("createEncoderByType failed: " + e.getMessage());
         }
+        // 配置encoder并开始，若失败会报运行时异常
         videoMediaCodec.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
         videoMediaCodec.start();
+
         recording = true;
     }
 
-
+    /**
+     * 推流，用于编码
+     * @param nv12 NV12格式的原数据
+     * @param time 时间戳，微秒
+     */
     public void pushFrame(byte[] nv12, long time) {
         if (recording) {
             encodeVideo(nv12, time);
         }
     }
 
-
+    /**
+     * 编码帧数据
+     * @param nv12 NV12格式的原数据
+     * @param time 时间戳，微秒
+     */
     private void encodeVideo(byte[] nv12, long time) {
-        //得到编码器的输入和输出流, 输入流写入源数据 输出流读取编码后的数据
-        //得到要使用的缓存序列角标
+        // 获取编码器的输入流缓存数据下标
         int inputIndex = videoMediaCodec.dequeueInputBuffer(TIMEOUT_USEC);
         if (inputIndex >= 0) {
             ByteBuffer inputBuffer = null;
+            // 兼容地获取输入流缓存数据
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                 inputBuffer = videoMediaCodec.getInputBuffer(inputIndex);
             } else {
                 inputBuffer = videoMediaCodec.getInputBuffers()[inputIndex];
             }
             inputBuffer.clear();
-            //把要编码的数据添加进去
+            // 把要编码的数据添加进去
             inputBuffer.put(nv12);
-            //塞到编码序列中, 等待MediaCodec编码
+            // 入队列，等待编码
             if (time == -1) {
                 videoMediaCodec.queueInputBuffer(inputIndex, 0, nv12.length, lastPresentationTime += (1000 * 1000 / frameRate), 0);
             } else {
@@ -98,19 +113,21 @@ public class Mp4Recorder {
         int outputIndex;
         while ((outputIndex = videoMediaCodec.dequeueOutputBuffer(bufferInfo, TIMEOUT_USEC)) >= 0) {
             ByteBuffer outputBuffer = null;
+            // 兼容地获取输出流，此时是编码后的数据
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                 outputBuffer = videoMediaCodec.getOutputBuffer(outputIndex);
             } else {
                 outputBuffer = videoMediaCodec.getOutputBuffers()[outputIndex];
             }
+            // 在拿到CSD(Codec Specific Data)时为MediaMuxer添加视频轨道
             if (bufferInfo.flags == MediaCodec.BUFFER_FLAG_CODEC_CONFIG) {
                 bufferInfo.size = 0;
-            }
-            if (bufferInfo.size != 0) {
                 if (videoTrack < 0) {
                     videoTrack = mediaMuxer.addTrack(videoMediaCodec.getOutputFormat());
                     mediaMuxer.start();
                 }
+            }
+            if (bufferInfo.size != 0) {
                 outputBuffer.position(bufferInfo.offset);
                 outputBuffer.limit(bufferInfo.offset + bufferInfo.size);
                 mediaMuxer.writeSampleData(videoTrack, outputBuffer, bufferInfo);

@@ -93,7 +93,7 @@ public class MainActivity extends AppCompatActivity implements DecodeCallback {
     /**
      * 视频目标文件
      */
-    String ffmpegMp4 = "sdcard/marked.mp4";
+    String ffmpegMp4 = "sdcard/ffmpeg.mp4";
     String mediaCodecMp4 = "sdcard/mediaCodec.mp4";
 
     /**
