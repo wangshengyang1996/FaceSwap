@@ -32,11 +32,11 @@ public class Mp4Decoder {
     }
 
     /**
-     *  1. 创建MediaExtractor，并绑定数据
-     *  2. 选择视频轨道
-     *  3. 获取视频轨道的MediaFormat，并获取视频的宽高、帧率等信息
-     *  4. 根据视频的mimeType创建解码器
-     *  5. 为解码器设置MediaFormat，用于确认可输出的裸数据格式
+     * 1. 创建MediaExtractor，并绑定数据
+     * 2. 选择视频轨道
+     * 3. 获取视频轨道的MediaFormat，并获取视频的宽高、帧率等信息
+     * 4. 根据视频的mimeType创建解码器
+     * 5. 为解码器设置MediaFormat，用于确认可输出的裸数据格式
      *
      * @param mp4Path 视频文件路径
      * @throws IOException 设置视频文件出错的异常
@@ -56,7 +56,7 @@ public class Mp4Decoder {
         height = mediaFormat.getInteger(MediaFormat.KEY_HEIGHT);
         String mime = mediaFormat.getString(MediaFormat.KEY_MIME);
         int frameRate = mediaFormat.getInteger(MediaFormat.KEY_FRAME_RATE);
-        Log.i(TAG, "init: " + frameRate + " " + width + " " + height);
+        Log.i(TAG, "init: " + frameRate  + " " + width + " " + height);
         decoder = MediaCodec.createDecoderByType(mime);
         showSupportedColorFormat(decoder.getCodecInfo().getCapabilitiesForType(mime));
         if (isColorFormatSupported(decodeColorFormat, decoder.getCodecInfo().getCapabilitiesForType(mime))) {
@@ -147,7 +147,7 @@ public class Mp4Decoder {
                             decodeCallback.onFrameAvailable(image, extractor.getSampleTime());
                         }
                         image.close();
-                    }else {
+                    } else {
                         ByteBuffer outputBuffer = decoder.getOutputBuffers()[outputBufferId];
                         if (decodeCallback != null) {
                             byte[] data = new byte[width * height * 3 / 2];
@@ -167,6 +167,7 @@ public class Mp4Decoder {
 
     /**
      * 选择视频文件中的视频轨道
+     *
      * @param extractor 媒体解析器
      * @return 视频轨道，-1代表失败
      */

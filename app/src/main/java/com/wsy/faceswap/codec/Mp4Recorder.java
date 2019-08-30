@@ -48,7 +48,7 @@ public class Mp4Recorder {
         MediaFormat mediaFormat;
         mediaFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, videoWidth, videoHeight);
         mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar);
-        mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, videoWidth * videoHeight * 3);
+        mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 3000000);
         mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, frameRate);
         mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
 
@@ -62,28 +62,15 @@ public class Mp4Recorder {
         recording = true;
     }
 
-    public void pushFrame(byte[] data) {
-        if (recording) {
-            try {
-                encodeVideo(data, -1);
-            } catch (IOException e) {
-                throw new RuntimeException(e.getMessage());
-            }
-        }
-    }
 
-    public void pushFrame(byte[] data, long time) {
+    public void pushFrame(byte[] nv12, long time) {
         if (recording) {
-            try {
-                encodeVideo(data, time);
-            } catch (IOException e) {
-                throw new RuntimeException(e.getMessage());
-            }
+            encodeVideo(nv12, time);
         }
     }
 
 
-    private void encodeVideo(byte[] nv12, long time) throws IOException {
+    private void encodeVideo(byte[] nv12, long time) {
         //得到编码器的输入和输出流, 输入流写入源数据 输出流读取编码后的数据
         //得到要使用的缓存序列角标
         int inputIndex = videoMediaCodec.dequeueInputBuffer(TIMEOUT_USEC);

@@ -248,7 +248,7 @@ public class ImageUtil {
         }
     }
 
-    public static void rgba32ToNv21(byte[] rgba32, byte[] nv21, int width, int height) {
+    private static void rgba32ToNv21(byte[] rgba32, byte[] nv21, int width, int height) {
         int yIndex = 0;
         int uvIndex = width * height;
         int rgbaIndex = 0;

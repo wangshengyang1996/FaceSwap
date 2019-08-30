@@ -36,7 +36,7 @@ int Recorder::startRecord(const char *mp4Path, int width, int height, int jFps) 
     pCodecCtx->pix_fmt = AV_PIX_FMT_YUV420P;
     pCodecCtx->width = width;
     pCodecCtx->height = height;
-    pCodecCtx->bit_rate = 100000;
+    pCodecCtx->bit_rate = 3000000;
     pCodecCtx->gop_size = 250;
 
 
