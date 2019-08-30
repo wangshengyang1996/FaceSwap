@@ -42,34 +42,39 @@ public class Mp4Decoder {
      * @throws IOException 设置视频文件出错的异常
      */
     public void init(String mp4Path) throws IOException {
-
+        // 创建MediaExtractor，并绑定数据源
         extractor = new MediaExtractor();
         extractor.setDataSource(mp4Path);
+        // 获取其中的视频轨道
         int trackIndex = selectTrack(extractor);
         if (trackIndex < 0) {
             throw new RuntimeException("decode failed for file " + mp4Path);
         }
+        // 选中其中的视频轨道，获取其格式
         extractor.selectTrack(trackIndex);
         MediaFormat mediaFormat = extractor.getTrackFormat(trackIndex);
 
+        // 获取视频的宽高、mimeType、帧率信息
         width = mediaFormat.getInteger(MediaFormat.KEY_WIDTH);
         height = mediaFormat.getInteger(MediaFormat.KEY_HEIGHT);
         String mime = mediaFormat.getString(MediaFormat.KEY_MIME);
         int frameRate = mediaFormat.getInteger(MediaFormat.KEY_FRAME_RATE);
         Log.i(TAG, "init: " + frameRate  + " " + width + " " + height);
+        // 根据mimeType创建解码器
         decoder = MediaCodec.createDecoderByType(mime);
         showSupportedColorFormat(decoder.getCodecInfo().getCapabilitiesForType(mime));
+        // 选择解码格式
         if (isColorFormatSupported(decodeColorFormat, decoder.getCodecInfo().getCapabilitiesForType(mime))) {
             mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, decodeColorFormat);
         } else {
             throw new IllegalArgumentException("unable to set decode color format");
         }
+        // 配置并开始
         decoder.configure(mediaFormat, null, null, 0);
         decoder.start();
         if (decodeCallback != null) {
             decodeCallback.onDecodeStart(width, height, frameRate);
         }
-
     }
 
     public void videoDecode() {

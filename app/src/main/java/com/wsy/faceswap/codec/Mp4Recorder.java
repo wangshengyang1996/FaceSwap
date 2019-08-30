@@ -71,6 +71,7 @@ public class Mp4Recorder {
 
     /**
      * 推流，用于编码
+     *
      * @param nv12 NV12格式的原数据
      * @param time 时间戳，微秒
      */
@@ -82,6 +83,7 @@ public class Mp4Recorder {
 
     /**
      * 编码帧数据
+     *
      * @param nv12 NV12格式的原数据
      * @param time 时间戳，微秒
      */
@@ -127,15 +129,14 @@ public class Mp4Recorder {
                     mediaMuxer.start();
                 }
             }
+            // 拿到编码数据时写入
             if (bufferInfo.size != 0) {
                 outputBuffer.position(bufferInfo.offset);
                 outputBuffer.limit(bufferInfo.offset + bufferInfo.size);
                 mediaMuxer.writeSampleData(videoTrack, outputBuffer, bufferInfo);
             }
-
-            //数据写入本地成功 通知MediaCodec释放data
+            // 数据写入本地成功 通知MediaCodec释放data
             videoMediaCodec.releaseOutputBuffer(outputIndex, false);
-
         }
     }
 
