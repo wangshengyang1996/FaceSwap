@@ -1,5 +1,5 @@
 - **效果如下**
-|![原视频](https://github.com/wangshengyang1996/FaceSwap/tree/master/sample/pdd.gif)|![换脸后](https://github.com/wangshengyang1996/FaceSwap/tree/master/sample/marked.gif)|
+|![原视频](https://github.com/wangshengyang1996/FaceSwap/blob/master/sample/pdd.gif)|![换脸后](https://github.com/wangshengyang1996/FaceSwap/blob/master/sample/marked.gif)|
 |:-|:-|
 
 - **所需的技术介绍：**
