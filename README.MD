@@ -3,7 +3,7 @@
 |![原视频](https://github.com/wangshengyang1996/FaceSwap/blob/master/sample/pdd.gif)|![换脸后](https://github.com/wangshengyang1996/FaceSwap/blob/master/sample/marked.gif)|
 |:-|:-|
 
-- **所需的技术介绍：**
+- **使用的技术介绍：**
    1. 视频编解码 （用于将视频解码为裸数据，再编码成视频，解码使用MediaCodec，编码使用ffmpeg）
    2. 人脸检测，人脸识别（使用虹软人脸识别SDK，[虹软人脸识别 - ArcFace SDK介绍及使用注意事项](https://www.jianshu.com/p/8ceb1c6d4e2c)）
    3. 帧数据图像处理（格式转换、裁剪、绘制），如果对**格式转换**和**图像裁剪**不太了解可以看下我以前写的介绍。[图像实战 - RGB、YUV图像格式转换](https://www.jianshu.com/p/7cf0e294ffd9)、[图像实战 - 裁剪RGB、YUV图像](https://www.jianshu.com/p/9e4bf1047c9b)。
