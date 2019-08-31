@@ -1,5 +1,5 @@
 //
-// Created by Administrator on 2019/8/25.
+// Created by WangShengyang on 2019/8/25.
 //
 
 #ifndef MP4EXTRACTOR_RECORDER_H
@@ -31,12 +31,11 @@ private:
     int frameIndex;
     char *path;
     AVDictionary *dictionary = 0;
+
 public:
-
     long System_currentTimeMillis() ;
-    int flush_encoder(AVFormatContext *fmt_ctx, unsigned int stream_index);
 
-    int startRecord(const  char *mp4Path, int width, int height, int jFps);
+    int startRecord(const  char *mp4Path, int width, int height, int fps);
 
     int pushFrame(char *yv12, int width, int height);
 

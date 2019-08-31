@@ -8,7 +8,9 @@ public class RecordUtil {
     private long handle = 0;
 
     private native long nativeStartRecord(String path, int width, int height, int fps);
+
     public native int pushFrame(long handle, byte[] yv12, int width, int height);
+
     public native int stopRecord(long handle);
 
     public boolean startRecord(String path, int width, int height, int fps) {
@@ -18,12 +20,20 @@ public class RecordUtil {
 
 
     public int pushFrame(byte[] yv12, int width, int height) {
+        if (handle == 0) {
+            return -1;
+        }
         return pushFrame(handle, yv12, width, height);
     }
 
 
     public int stopRecord() {
-        return stopRecord(handle);
+        if (handle == 0) {
+            return -1;
+        }
+        int code = stopRecord(handle);
+        handle = 0;
+        return code;
     }
 
 }
